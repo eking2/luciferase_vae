@@ -1,21 +1,21 @@
 import requests
 from requests.exceptions import HTTPError
 import subprocess
+import shlex
 import time
+from Bio import SeqIO
 from pathlib import Path
 
 
 class PrepLucDataset:
 
-    def __init__(self, interpro='IPR011251', pfam='PF00296', seq_len='504', seq_thresh=0.7, valid_ratio=0.2):
+    def __init__(self, interpro='IPR011251', pfam='PF00296', seq_len='504', seq_thresh=0.7):
 
         self.interpro = interpro
         self.pfam = pfam
-        self.seq_len = seq_len
+        self.seq_len = int(seq_len)
         self.seq_thresh = seq_thresh
-        self.valid_ratio = valid_ratio
 
-        self.seqs = None
 
     def download_interpro(self):
 
@@ -94,22 +94,26 @@ class PrepLucDataset:
     def clean_interpro(self):
 
         '''delete all sequences longer than seq_len'''
+    
+        records = SeqIO.parse(f'./data/{self.interpro}.fasta', 'fasta')
+        
+        out_path = Path(f'./data/clean_{self.interpro}.fasta')
 
-        pass
+        if not out_path.exists():
+            print(f'Filtering out all sequences longer than {self.seq_len} residues from {self.interpro}')
+            with open(out_path, 'w') as f:
+                
+                filtered = (record for record in records if len(record.seq) <= self.seq_len)
+                SeqIO.write(filtered, f, 'fasta')
 
 
     def run_mmseqs2(self):
 
         '''cluster sequences on seq_threshold'''
 
-        pass
-
-
-    def split_data(self):
-
-        '''randomly split clusters into train/valid sets'''
-
-        pass
+        print('Running mmseqs2')
+        cmd = f'mmseqs easy-cluster ./data/clean_{self.interpro}.fasta ./data/clusterRes ./data/tmp --min-seq-id {self.seq_thresh}'
+        subprocess.run(shlex.split(cmd))
 
 
     def download_pfam_hmm(self):
@@ -130,5 +134,7 @@ class PrepLucDataset:
 if __name__ == '__main__':
 
     prep = PrepLucDataset()
-    prep.download_interpro()
     #prep.download_pfam_hmm()
+    #prep.download_interpro()
+    #prep.clean_interpro()
+    #prep.run_mmseqs2()
