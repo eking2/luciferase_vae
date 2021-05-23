@@ -135,7 +135,10 @@ class MSA_VAE(nn.Module):
 
     def vae_loss(self, x, x_rec, mu, logvar):
 
-        recon_loss = F.cross_entropy(x_rec, x, reduction='sum')
+        labels = x.argmax(dim=1)
+
+        # x_rec is ohe
+        recon_loss = F.cross_entropy(x_rec, labels, reduction='sum')
         kl_loss = -0.5 * torch.sum(1 + logvar - mu**2 - torch.exp(logvar))
 
         return recon_loss + kl_loss
