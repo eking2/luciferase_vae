@@ -5,7 +5,9 @@ import shlex
 import time
 from Bio import SeqIO
 from pathlib import Path
-
+from tqdm.auto import tqdm
+import pandas as pd
+import numpy as np
 
 class PrepLucDataset:
 
@@ -94,15 +96,15 @@ class PrepLucDataset:
     def clean_interpro(self):
 
         '''delete all sequences longer than seq_len'''
-    
+
         records = SeqIO.parse(f'./data/{self.interpro}.fasta', 'fasta')
-        
+
         out_path = Path(f'./data/clean_{self.interpro}.fasta')
 
         if not out_path.exists():
             print(f'Filtering out all sequences longer than {self.seq_len} residues from {self.interpro}')
             with open(out_path, 'w') as f:
-                
+
                 filtered = (record for record in records if len(record.seq) <= self.seq_len)
                 SeqIO.write(filtered, f, 'fasta')
 
@@ -131,10 +133,84 @@ class PrepLucDataset:
             save_path.write_text(r.text)
 
 
+def get_ipro(accession):
+
+    '''get interpro accession ids from uniprot'''
+
+    url = f'https://www.uniprot.org/uniprot/{accession}.xml'
+    r = requests.get(url)
+    r.raise_for_status()
+
+    content = BeautifulSoup(r.text)
+    records = content.find_all('dbreference')
+
+    interpro_ids = []
+    for record in records:
+        if record['type'] == 'InterPro':
+            interpro_ids.append(record['id'])
+
+    return interpro_ids
+
+
+def get_valid_ipros(fasta):
+
+    '''download interpro accession ids for all samples'''
+
+    records = SeqIO.parse(fasta, 'fasta')
+
+    with open('/data/ipros_out.txt', 'w') as f:
+        for record in records:
+
+            time.sleep(0.1)
+
+            try:
+                interpro_ids = get_ipro(record.id)
+                res = f'{record.id} - {",".join(interpro_ids)}\n'
+
+                f.write(res)
+
+            except:
+                f.write(f'skip {record.id}')
+
+
+def tidy_interpro(interpros, save):
+
+    '''convert raw text of interpros to tidy format'''
+
+    lines = Path(interpros).read_text().splitlines()
+
+    df = pd.DataFrame(columns=['accession', 'ipro'])
+
+    for line in tqdm(lines):
+        if '-' in line:
+            accession = line.split('-')[0].strip()
+            ipros = line.split('-')[1].strip().split(',')
+
+            for ipro in ipros:
+                temp_df = pd.DataFrame({'accession' : accession,
+                                        'ipro' : [ipro]})
+
+                df = df.append(temp_df, ignore_index=True)
+
+    df_filtered = df.query("ipro in @save")
+    df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].astype('category')
+    df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].cat.reorder_categories(save)
+    df_filtered.sort_values(by=['ipro', 'accession'], inplace=True)
+    df_filtered.drop_duplicates('accession', inplace=True)
+    df_filtered.to_csv('./data/df_filtered.csv', index=False)
+
+
 if __name__ == '__main__':
 
-    prep = PrepLucDataset()
+    #prep = PrepLucDataset()
     #prep.download_pfam_hmm()
     #prep.download_interpro()
     #prep.clean_interpro()
     #prep.run_mmseqs2()
+
+    #out = get_ipro('A1JMY1')
+    #get_valid_ipros('./data/luxafilt_llmsa_val.fa')
+
+    save = ['IPR016215', 'IPR019949', 'IPR019952', 'IPR019945', 'IPR022290', 
+            'IPR019911', 'IPR019951', 'IPR023934', 'IPR024014']
+    tidy_interpro('./data/ipros_out.txt', save)
