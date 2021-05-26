@@ -114,7 +114,7 @@ class MSA_VAE(nn.Module):
     def __init__(self, encoder, decoder):
 
         super().__init__()
-        
+
         self.encoder = encoder
         self.decoder = decoder
 
@@ -138,8 +138,8 @@ class MSA_VAE(nn.Module):
         labels = x.argmax(dim=1)
 
         # x_rec is ohe
-        recon_loss = F.cross_entropy(x_rec, labels, reduction='sum')
-        kl_loss = -0.5 * torch.sum(1 + logvar - mu**2 - torch.exp(logvar))
+        recon_loss = F.cross_entropy(x_rec, labels, reduction='sum') / x.shape[0]
+        kl_loss = -0.5 * torch.sum(1 + logvar - mu**2 - torch.exp(logvar)) / x.shape[0]
 
         return recon_loss + kl_loss
 

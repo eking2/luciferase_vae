@@ -173,7 +173,7 @@ def get_valid_ipros(fasta):
                 f.write(f'skip {record.id}')
 
 
-def tidy_interpro(interpros, save):
+def tidy_interpro(interpros):
 
     '''convert raw text of interpros to tidy format'''
 
@@ -192,12 +192,13 @@ def tidy_interpro(interpros, save):
 
                 df = df.append(temp_df, ignore_index=True)
 
-    df_filtered = df.query("ipro in @save")
-    df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].astype('category')
-    df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].cat.reorder_categories(save)
-    df_filtered.sort_values(by=['ipro', 'accession'], inplace=True)
-    df_filtered.drop_duplicates('accession', inplace=True)
-    df_filtered.to_csv('./data/df_filtered.csv', index=False)
+    df.to_csv('data/valid_ipro_labels.csv', index=False)
+    # df_filtered = df.query("ipro in @save")
+    # df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].astype('category')
+    # df_filtered.loc[:, 'ipro'] = df_filtered['ipro'].cat.reorder_categories(save)
+    # df_filtered.sort_values(by=['ipro', 'accession'], inplace=True)
+    # df_filtered.drop_duplicates('accession', inplace=True)
+    # df_filtered.to_csv('./data/df_filtered.csv', index=False)
 
 
 if __name__ == '__main__':
@@ -211,6 +212,6 @@ if __name__ == '__main__':
     #out = get_ipro('A1JMY1')
     #get_valid_ipros('./data/luxafilt_llmsa_val.fa')
 
-    save = ['IPR016215', 'IPR019949', 'IPR019952', 'IPR019945', 'IPR022290', 
-            'IPR019911', 'IPR019951', 'IPR023934', 'IPR024014']
-    tidy_interpro('./data/ipros_out.txt', save)
+    #save = ['IPR016215', 'IPR019949', 'IPR019952', 'IPR019945', 'IPR022290',
+    #        'IPR019911', 'IPR019951', 'IPR023934', 'IPR024014']
+    tidy_interpro('./data/ipros_out.txt')
